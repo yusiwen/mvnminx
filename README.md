@@ -35,14 +35,25 @@ mvnminx depends on `com.elasticpath.tools:mvnmin:1.0.3` as a library. The `--exc
 
 No source code from mvnmin is modified. This is pure composition over the `ProjectRepository` interface.
 
+## Prerequisites
+
+`com.elasticpath.tools:mvnmin:1.0.3` must be installed to your local Maven repository first:
+
+```bash
+git clone git@github.com:elasticpath/mvnmin.git
+cd mvnmin
+git checkout mvnmin-1.0.3
+mvn clean install -DskipTests
+```
+
+This dependency is not available on Maven Central, so local installation is required.
+
 ## Build
 
 ```bash
 mvn clean package          # produces target/mvnminx-1.0.4.jar (fat JAR)
 mvn test                   # run tests
 ```
-
-Requires `com.elasticpath.tools:mvnmin:1.0.3` in your local Maven repository (install from the release tag if needed).
 
 ## License
 
