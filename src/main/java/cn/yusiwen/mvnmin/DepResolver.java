@@ -23,9 +23,13 @@ public class DepResolver {
 	private final Map<String, String> artifactIdToFullId = new HashMap<>();
 	private final Map<String, String> fullIdToPomPath = new HashMap<>();
 	private final Set<String> allFullIds = new HashSet<>();
+	private final Map<String, String> childToParent = new HashMap<>();
+	private final String projectRootFullId;
 
 	public DepResolver(final ProjectRepository repo) {
 		Set<String> allPoms = repo.findAllPomFiles(Integer.MAX_VALUE);
+
+		String rootId = null;
 
 		for (String pomPath : allPoms) {
 			ModuleInfo info = readModuleInfo(pomPath);
@@ -33,6 +37,17 @@ public class DepResolver {
 				fullIdToPomPath.put(info.fullId, pomPath);
 				artifactIdToFullId.put(info.artifactId, info.fullId);
 				allFullIds.add(info.fullId);
+				if ("pom.xml".equals(pomPath) || "./pom.xml".equals(pomPath)) {
+					rootId = info.fullId;
+				}
+			}
+		}
+		projectRootFullId = rootId;
+
+		for (String pomPath : allPoms) {
+			ModuleInfo info = readModuleInfo(pomPath);
+			if (info != null && info.parentFullId != null) {
+				childToParent.put(info.fullId, info.parentFullId);
 			}
 		}
 	}
@@ -79,7 +94,25 @@ public class DepResolver {
 			}
 		}
 
+		addParentModules(inputFullIds, result);
+		addParentModules(result, result);
+
 		return result;
+	}
+
+	private void addParentModules(final Set<String> sourceModules, final Set<String> result) {
+		Set<String> toCheck = new HashSet<>(sourceModules);
+		while (!toCheck.isEmpty()) {
+			String current = toCheck.iterator().next();
+			toCheck.remove(current);
+			String parent = childToParent.get(current);
+			if (parent != null && allFullIds.contains(parent)
+					&& !parent.equals(projectRootFullId)) {
+				if (result.add(parent)) {
+					toCheck.add(parent);
+				}
+			}
+		}
 	}
 
 	private String resolveModuleId(final String input) {
@@ -141,15 +174,26 @@ public class DepResolver {
 			}
 
 			String groupId = getChildText(root, "groupId");
-			if (groupId == null) {
-				Element parent = getChild(root, "parent");
-				if (parent != null) {
-					groupId = getChildText(parent, "groupId");
-				}
+			String parentGroupId = null;
+			String parentArtifactId = null;
+
+			Element parentEl = getChild(root, "parent");
+			if (parentEl != null) {
+				parentGroupId = getChildText(parentEl, "groupId");
+				parentArtifactId = getChildText(parentEl, "artifactId");
+			}
+
+			if (groupId == null && parentGroupId != null) {
+				groupId = parentGroupId;
+			}
+
+			String parentFullId = null;
+			if (parentGroupId != null && parentArtifactId != null) {
+				parentFullId = parentGroupId + ":" + parentArtifactId;
 			}
 
 			if (groupId != null) {
-				return new ModuleInfo(groupId, artifactId);
+				return new ModuleInfo(groupId, artifactId, parentFullId);
 			}
 			return null;
 		} catch (Exception e) {
@@ -186,11 +230,13 @@ public class DepResolver {
 		final String groupId;
 		final String artifactId;
 		final String fullId;
+		final String parentFullId;
 
-		ModuleInfo(final String groupId, final String artifactId) {
+		ModuleInfo(final String groupId, final String artifactId, final String parentFullId) {
 			this.groupId = groupId;
 			this.artifactId = artifactId;
 			this.fullId = groupId + ":" + artifactId;
+			this.parentFullId = parentFullId;
 		}
 	}
 }

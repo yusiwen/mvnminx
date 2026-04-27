@@ -36,18 +36,18 @@ class DepResolverTest {
 				"com.test", "parent", null, null);
 
 		moduleAPom = writePom(tempDir, "module-a/pom.xml",
-				"com.test", "module-a", "com.test",
+				"com.test", "module-a", null,
 				createDep("com.test", "module-b"));
 
 		moduleBPom = writePom(tempDir, "module-b/pom.xml",
-				"com.test", "module-b", "com.test",
+				"com.test", "module-b", null,
 				createDep("com.test", "module-c"));
 
 		moduleCPom = writePom(tempDir, "module-c/pom.xml",
-				"com.test", "module-c", "com.test", "");
+				"com.test", "module-c", null, "");
 
 		moduleDPom = writePom(tempDir, "module-d/pom.xml",
-				"com.test", "module-d", "com.test",
+				"com.test", "module-d", null,
 				createDep("com.test", "module-a")
 						+ createDep("com.test", "module-b"));
 	}
@@ -68,7 +68,7 @@ class DepResolverTest {
 	@Test
 	void directDependencyResolved() throws IOException {
 		String pomX = writePom(tempDir, "module-x/pom.xml",
-				"com.test", "module-x", "com.test",
+				"com.test", "module-x", null,
 				createDep("com.test", "module-c"));
 		ProjectRepository repo = createRepo(rootPom, pomX, moduleCPom);
 		DepResolver resolver = new DepResolver(repo);
@@ -120,7 +120,7 @@ class DepResolverTest {
 	@Test
 	void dependencyWithProjectGroupIdVariable() throws IOException {
 		String pomA = writePom(tempDir, "module-a2/pom.xml",
-				"com.test", "module-a2", "com.test",
+				"com.test", "module-a2", null,
 				"      <dependency>\n"
 						+ "        <groupId>${project.groupId}</groupId>\n"
 						+ "        <artifactId>module-b</artifactId>\n"
@@ -134,7 +134,7 @@ class DepResolverTest {
 	@Test
 	void dependencyOutsideProjectIgnored() throws IOException {
 		String pom = writePom(tempDir, "module-ext/pom.xml",
-				"com.test", "module-ext", "com.test",
+				"com.test", "module-ext", null,
 				createDep("com.other", "external-lib")
 						+ createDep("com.test", "module-b"));
 		ProjectRepository repo = createRepo(rootPom, pom, moduleBPom, moduleCPom);
@@ -146,12 +146,41 @@ class DepResolverTest {
 	@Test
 	void moduleNotDependingOnItself() throws IOException {
 		String pom = writePom(tempDir, "module-circ/pom.xml",
-				"com.test", "module-circ", "com.test",
+				"com.test", "module-circ", null,
 				createDep("com.test", "module-circ"));
 		ProjectRepository repo = createRepo(rootPom, pom);
 		DepResolver resolver = new DepResolver(repo);
 		Set<String> result = resolver.resolve(Collections.singleton("com.test:module-circ"));
 		assertTrue(result.isEmpty());
+	}
+
+	@Test
+	void parentWrapperModuleIncluded() throws IOException {
+		String wrapperPom = writePomParent(tempDir, "wrapper/pom.xml",
+				"com.test", "wrapper", null, null, null);
+		String childPom = writePomParent(tempDir, "wrapper/child/pom.xml",
+				"com.test", "child", "com.test", "wrapper",
+				createDep("com.test", "module-c"));
+		ProjectRepository repo = createRepo(rootPom, wrapperPom, childPom, moduleCPom);
+		DepResolver resolver = new DepResolver(repo);
+		Set<String> result = resolver.resolve(Collections.singleton("com.test:child"));
+		assertEquals(new HashSet<>(Arrays.asList("com.test:module-c", "com.test:wrapper")), result);
+	}
+
+	@Test
+	void parentChainIncludedTransitively() throws IOException {
+		String grandPom = writePomParent(tempDir, "grand/pom.xml",
+				"com.test", "grand", null, null, null);
+		String midPom = writePomParent(tempDir, "grand/mid/pom.xml",
+				"com.test", "mid", "com.test", "grand", null);
+		String leafPom = writePomParent(tempDir, "grand/mid/leaf/pom.xml",
+				"com.test", "leaf", "com.test", "mid",
+				createDep("com.test", "module-c"));
+		ProjectRepository repo = createRepo(rootPom, grandPom, midPom, leafPom, moduleCPom);
+		DepResolver resolver = new DepResolver(repo);
+		Set<String> result = resolver.resolve(Collections.singleton("com.test:leaf"));
+		assertEquals(new HashSet<>(Arrays.asList("com.test:module-c", "com.test:grand", "com.test:mid")),
+				result);
 	}
 
 	private ProjectRepository createRepo(final String... pomPaths) {
@@ -182,6 +211,14 @@ class DepResolverTest {
 	private static String writePom(final Path baseDir, final String relativePath,
 			final String groupId, final String artifactId,
 			final String parentGroupId, final String depsXml) throws IOException {
+		return writePomParent(baseDir, relativePath, groupId, artifactId,
+				parentGroupId, parentGroupId != null ? "parent" : null, depsXml);
+	}
+
+	private static String writePomParent(final Path baseDir, final String relativePath,
+			final String groupId, final String artifactId,
+			final String parentGroupId, final String parentArtifactId,
+			final String depsXml) throws IOException {
 		File pomFile = baseDir.resolve(relativePath).toFile();
 		pomFile.getParentFile().mkdirs();
 
@@ -192,10 +229,10 @@ class DepResolverTest {
 		xml.append("  xsi:schemaLocation=\"http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd\">\n");
 		xml.append("  <modelVersion>4.0.0</modelVersion>\n");
 
-		if (parentGroupId != null) {
+		if (parentGroupId != null && parentArtifactId != null) {
 			xml.append("  <parent>\n");
 			xml.append("    <groupId>").append(parentGroupId).append("</groupId>\n");
-			xml.append("    <artifactId>parent</artifactId>\n");
+			xml.append("    <artifactId>").append(parentArtifactId).append("</artifactId>\n");
 			xml.append("  </parent>\n");
 		}
 
