@@ -5,19 +5,19 @@ Extends [mvnmin](https://github.com/elasticpath/mvnmin) with glob-based exclude 
 ## Usage
 
 ```bash
-java -jar target/mvnminx-1.0.4.jar [options] [<maven goals>]
+java -jar target/mvnminx-1.0.5.jar [options] [<maven goals>]
 
 # exclude root-level .md files
-java -jar target/mvnminx-1.0.4.jar --exclude "*.md" clean install
+java -jar target/mvnminx-1.0.5.jar --exclude "*.md" clean install
 
 # exclude all .txt files at any depth
-java -jar target/mvnminx-1.0.4.jar --exclude "**/*.txt" test
+java -jar target/mvnminx-1.0.5.jar --exclude "**/*.txt" test
 
 # exclude everything except .java files (negation with !)
-java -jar target/mvnminx-1.0.4.jar --exclude "**" --exclude "!**/*.java" compile
+java -jar target/mvnminx-1.0.5.jar --exclude "**" --exclude "!**/*.java" compile
 
 # multiple patterns (comma-separated)
-java -jar target/mvnminx-1.0.4.jar --exclude "*.md,*.txt,*.generated.java" verify
+java -jar target/mvnminx-1.0.5.jar --exclude "*.md,*.txt,*.generated.java" verify
 ```
 
 ## `--dep` — Dependency Resolution
@@ -26,13 +26,13 @@ Print the transitive inter-module Maven dependencies of given project(s). Requir
 
 ```bash
 # print all modules that beap-system transitively depends on
-java -jar target/mvnminx-1.0.4.jar -p --dep -pl beap-system
+java -jar target/mvnminx-1.0.5.jar -p --dep -pl beap-system
 
 # short names work (resolved by artifactId)
-java -jar target/mvnminx-1.0.4.jar -p --dep -pl module-a,module-b
+java -jar target/mvnminx-1.0.5.jar -p --dep -pl module-a,module-b
 
 # full coordinates also accepted
-java -jar target/mvnminx-1.0.4.jar -p --dep -pl com.example:module-a
+java -jar target/mvnminx-1.0.5.jar -p --dep -pl com.example:module-a
 ```
 
 The output includes:
@@ -49,10 +49,10 @@ When combined with `--diff` and `--exclude`, `--dep` prints only the **intersect
 
 ```bash
 # which dependencies of beap-system changed between HEAD and main?
-java -jar target/mvnminx-1.0.4.jar -p --dep -pl beap-system --diff=HEAD..main
+java -jar target/mvnminx-1.0.5.jar -p --dep -pl beap-system --diff=HEAD..main
 
 # same, excluding markdown changes from the diff
-java -jar target/mvnminx-1.0.4.jar -p --dep -pl beap-system --diff=HEAD..main --exclude='*.md'
+java -jar target/mvnminx-1.0.5.jar -p --dep -pl beap-system --diff=HEAD..main --exclude='*.md'
 ```
 
 This answers: *"among the modules my project depends on, which were actually touched in this commit range?"*
@@ -91,7 +91,7 @@ This dependency is not available on Maven Central, so local installation is requ
 ## Build
 
 ```bash
-mvn clean package          # produces target/mvnminx-1.0.4.jar (fat JAR)
+mvn clean package          # produces target/mvnminx-1.0.5.jar (fat JAR)
 mvn test                   # run tests
 ```
 

@@ -6,11 +6,11 @@
 
   <groupId>cn.yusiwen</groupId>
   <artifactId>mvnmin</artifactId>
-  <version>1.0.4</version>
+  <version>1.0.5</version>
   <packaging>jar</packaging>
 
   <name>mvnminx</name>
-  <description>Extends mvnmin with --exclude pattern filtering for change detection</description>
+  <description>Extends mvnmin with --exclude pattern filtering and --dep dependency resolution</description>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
