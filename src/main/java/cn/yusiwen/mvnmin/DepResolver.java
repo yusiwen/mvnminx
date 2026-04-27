@@ -107,7 +107,7 @@ public class DepResolver {
 		}
 	}
 
-	private String resolveModuleId(final String input) {
+	String resolveModuleId(final String input) {
 		if (input.contains(":")) {
 			return input;
 		}
