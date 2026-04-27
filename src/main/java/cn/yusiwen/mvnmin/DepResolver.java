@@ -24,12 +24,9 @@ public class DepResolver {
 	private final Map<String, String> fullIdToPomPath = new HashMap<>();
 	private final Set<String> allFullIds = new HashSet<>();
 	private final Map<String, String> childToParent = new HashMap<>();
-	private final String projectRootFullId;
 
 	public DepResolver(final ProjectRepository repo) {
 		Set<String> allPoms = repo.findAllPomFiles(Integer.MAX_VALUE);
-
-		String rootId = null;
 
 		for (String pomPath : allPoms) {
 			ModuleInfo info = readModuleInfo(pomPath);
@@ -37,12 +34,8 @@ public class DepResolver {
 				fullIdToPomPath.put(info.fullId, pomPath);
 				artifactIdToFullId.put(info.artifactId, info.fullId);
 				allFullIds.add(info.fullId);
-				if ("pom.xml".equals(pomPath) || "./pom.xml".equals(pomPath)) {
-					rootId = info.fullId;
-				}
 			}
 		}
-		projectRootFullId = rootId;
 
 		for (String pomPath : allPoms) {
 			ModuleInfo info = readModuleInfo(pomPath);
@@ -106,8 +99,7 @@ public class DepResolver {
 			String current = toCheck.iterator().next();
 			toCheck.remove(current);
 			String parent = childToParent.get(current);
-			if (parent != null && allFullIds.contains(parent)
-					&& !parent.equals(projectRootFullId)) {
+			if (parent != null && allFullIds.contains(parent)) {
 				if (result.add(parent)) {
 					toCheck.add(parent);
 				}
