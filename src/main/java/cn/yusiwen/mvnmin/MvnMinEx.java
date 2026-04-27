@@ -2,7 +2,9 @@ package cn.yusiwen.mvnmin;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import com.elasticpath.tools.mavenminimal.MvnMinCli;
 import com.elasticpath.tools.mavenminimal.diff.GitFilesystemProjectRepository;
@@ -19,6 +21,19 @@ public final class MvnMinEx {
 				printUsage(System.out);
 				return;
 			}
+		}
+
+		boolean depMode = false;
+		for (String arg : args) {
+			if ("--dep".equals(arg)) {
+				depMode = true;
+				break;
+			}
+		}
+
+		if (depMode) {
+			handleDepMode(args);
+			return;
 		}
 
 		List<String> excludePatterns = new ArrayList<>();
@@ -58,6 +73,65 @@ public final class MvnMinEx {
 		System.exit(exitCode);
 	}
 
+	private static void handleDepMode(final String[] args) {
+		boolean hasPrintMode = false;
+		for (String arg : args) {
+			if ("-p".equals(arg)) {
+				hasPrintMode = true;
+				break;
+			}
+		}
+		if (!hasPrintMode) {
+			System.err.println("--dep requires -p");
+			System.exit(1);
+		}
+
+		Set<String> inputModules = new HashSet<>();
+		for (int i = 0; i < args.length; i++) {
+			String arg = args[i];
+			if ("-pl".equals(arg) || "--projects".equals(arg)) {
+				if (i + 1 < args.length) {
+					String value = args[++i];
+					for (String part : value.split(",")) {
+						String trimmed = part.trim();
+						if (!trimmed.isEmpty() && !trimmed.startsWith("!") && !trimmed.startsWith("-")) {
+							inputModules.add(trimmed);
+						}
+					}
+				}
+			} else if (arg.startsWith("-pl=")) {
+				String value = arg.substring("-pl=".length());
+				for (String part : value.split(",")) {
+					String trimmed = part.trim();
+					if (!trimmed.isEmpty() && !trimmed.startsWith("!") && !trimmed.startsWith("-")) {
+						inputModules.add(trimmed);
+					}
+				}
+			} else if (arg.startsWith("--projects=")) {
+				String value = arg.substring("--projects=".length());
+				for (String part : value.split(",")) {
+					String trimmed = part.trim();
+					if (!trimmed.isEmpty() && !trimmed.startsWith("!") && !trimmed.startsWith("-")) {
+						inputModules.add(trimmed);
+					}
+				}
+			}
+		}
+
+		if (inputModules.isEmpty()) {
+			System.err.println("--dep requires -pl with at least one module");
+			System.exit(1);
+		}
+
+		ProjectRepository repo = new GitFilesystemProjectRepository();
+		DepResolver resolver = new DepResolver(repo);
+		Set<String> deps = resolver.resolve(inputModules);
+
+		for (String dep : deps) {
+			System.out.println(dep);
+		}
+	}
+
 	private static void printUsage(final PrintStream out) {
 		out.println("usage: mvmin [options] [<maven goal(s)>] [<maven phase(s)>] [<maven arg(s)>]");
 		out.println();
@@ -81,6 +155,9 @@ public final class MvnMinEx {
 		out.println("  Scripting");
 		out.println("    -p                         Don't invoke maven, print out activated projects,");
 		out.println("                               sorted, newline separated.");
+		out.println("    --dep                      When combined with -p and -pl, print the transitive");
+		out.println("                               inter-module dependencies of the given project(s)");
+		out.println("                               instead of the activated projects.");
 		out.println();
 		out.println("  Debug");
 		out.println("    -d --dry-run               Don't invoke maven, print out the commands that");
